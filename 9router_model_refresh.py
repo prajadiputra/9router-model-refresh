@@ -53,6 +53,9 @@ def backup() -> None:
     connection has uncommitted writes.
     """
     os.makedirs(BACKUP_DIR, exist_ok=True)
+    # remove stale 0-byte file from a previous no-change run
+    if os.path.exists(BACKUP_FILE) and os.path.getsize(BACKUP_FILE) == 0:
+        os.remove(BACKUP_FILE)
     src = sqlite3.connect(DB)
     out = sqlite3.connect(BACKUP_FILE)
     with out:
@@ -233,6 +236,9 @@ def main() -> int:
         db.commit()
         log("committed")
     else:
+        # clean up stale 0-byte backup file from a previous run
+        if os.path.exists(BACKUP_FILE) and os.path.getsize(BACKUP_FILE) == 0:
+            os.remove(BACKUP_FILE)
         log("no changes, no commit")
 
     db.close()
