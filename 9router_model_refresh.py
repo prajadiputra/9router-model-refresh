@@ -220,6 +220,44 @@ def sync_provider(
     }
 
 
+def reconcile_combo_orphans(db: sqlite3.Connection, providers: list[dict]) -> int:
+    """Scan all combos — remove ANY model reference whose prefix is a known
+    custom provider but whose model ID no longer exists in kv (scope customModels).
+
+    This catches orphans from previous runs where the model was removed from kv
+    but the combo reference survived (e.g. script updated mid-cycle, or manual
+    kv edit).  Returns count of pruned references.
+    """
+    # Build prefix → set of valid model IDs from kv
+    prefix_models: dict[str, set[str]] = {}
+    for p in providers:
+        prefix_models[p["prefix"]] = get_cached_models(db, p["node_id"])
+    if not prefix_models:
+        return 0
+
+    db.row_factory = sqlite3.Row
+    pruned_total = 0
+    for r in db.execute("SELECT id, name, models FROM combos WHERE models IS NOT NULL"):
+        models = json.loads(r["models"]) if r["models"] else []
+        new_models = []
+        removed_in_combo = []
+        for m in models:
+            if isinstance(m, str) and "/" in m:
+                pref, mid = m.split("/", 1)
+                if pref in prefix_models and mid not in prefix_models[pref]:
+                    removed_in_combo.append(m)
+                    pruned_total += 1
+                    continue
+            new_models.append(m)
+        if removed_in_combo:
+            db.execute(
+                "UPDATE combos SET models=?, updatedAt=datetime('now') WHERE id=?",
+                (json.dumps(new_models), r["id"]),
+            )
+            log(f"  combo '{r['name']}': pruned {removed_in_combo}")
+    return pruned_total
+
+
 def prune_stale_combo_models(
     db: sqlite3.Connection, providers: list[dict], removed_by_node: dict
 ) -> None:
@@ -281,9 +319,15 @@ def main() -> int:
     if any_change:
         backup()
         prune_stale_combo_models(db, providers, removed_by_node)
+        reconcile_combo_orphans(db, providers)
         db.commit()
         log("committed")
     else:
+        # If nothing changed at provider level, still reconcile any combo orphans
+        # that may have been left by a previous interrupted cycle.
+        if reconcile_combo_orphans(db, providers) > 0:
+            db.commit()
+            log("reconciled combo orphans (no provider change)")
         # clean up stale 0-byte backup file from a previous run
         if os.path.exists(BACKUP_FILE) and os.path.getsize(BACKUP_FILE) == 0:
             os.remove(BACKUP_FILE)
