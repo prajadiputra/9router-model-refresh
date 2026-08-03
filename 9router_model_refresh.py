@@ -32,6 +32,9 @@ from datetime import datetime, timezone
 DB = os.path.expanduser(os.environ.get("NINEROUTER_DB", "~/.9router/db/data.sqlite"))
 BACKUP_DIR = os.path.expanduser(os.environ.get("NINEROUTER_BACKUP_DIR", "~/.9router/db/backups"))
 BACKUP_FILE = os.path.join(BACKUP_DIR, "data.sqlite.pre-sync")
+# JSONL event log consumed by 9router-live widget
+EVENT_LOG = os.path.expanduser(os.environ.get("NINEROUTER_EVENT_LOG", "~/.9router/db/sync-events.jsonl"))
+EVENT_MAX_LINES = int(os.environ.get("NINEROUTER_EVENT_MAX_LINES", "5000"))
 # Some upstreams (Cloudflare-fronted) 403 curl's default UA. Browser UA avoids it.
 USER_AGENT = os.environ.get(
     "NINEROUTER_SYNC_UA",
@@ -40,9 +43,34 @@ USER_AGENT = os.environ.get(
 FETCH_TIMEOUT = int(os.environ.get("NINEROUTER_SYNC_TIMEOUT", "30"))
 
 
+def now_iso() -> str:
+    return datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+
+
 def log(msg: str) -> None:
-    ts = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+    ts = now_iso()
     print(f"[{ts}] {msg}", file=sys.stderr)
+
+
+def emit_event(event: dict) -> None:
+    """Append one JSONL event to the event log (read by 9router-live)."""
+    try:
+        event = dict(event)
+        event.setdefault("ts", now_iso())
+        with open(EVENT_LOG, "a", encoding="utf-8") as f:
+            f.write(json.dumps(event) + "\n")
+            f.flush()
+        # trim old lines to EVENT_MAX_LINES
+        if EVENT_MAX_LINES > 0:
+            try:
+                lines = open(EVENT_LOG, encoding="utf-8").readlines()
+                if len(lines) > EVENT_MAX_LINES:
+                    with open(EVENT_LOG, "w", encoding="utf-8") as f:
+                        f.writelines(lines[-EVENT_MAX_LINES:])
+            except OSError:
+                pass
+    except OSError as e:
+        log(f"  event_log write failed: {e}")
 
 
 def backup() -> None:
@@ -141,6 +169,7 @@ def sync_provider(
     to_remove = cached - upstream_set
 
     added = 0
+    added_ids = []
     for mid in to_add:
         key = f"{node_id}|{mid}|llm"
         value = json.dumps(
@@ -151,12 +180,30 @@ def sync_provider(
             ("customModels", key, value),
         )
         added += 1
+        added_ids.append(mid)
 
     removed = 0
+    removed_ids = []
     for mid in to_remove:
         key = f"{node_id}|{mid}|llm"
         db.execute("DELETE FROM kv WHERE scope='customModels' AND key=?", (key,))
         removed += 1
+        removed_ids.append(mid)
+
+    for mid in added_ids:
+        emit_event({
+            "type": "model_add",
+            "provider": name,
+            "prefix": provider["prefix"],
+            "model": mid,
+        })
+    for mid in removed_ids:
+        emit_event({
+            "type": "model_remove",
+            "provider": name,
+            "prefix": provider["prefix"],
+            "model": mid,
+        })
 
     if added or removed:
         log(f"  {name}: +{added} -{removed} (cached: {len(cached)} → {len(upstream_set)})")
@@ -168,7 +215,8 @@ def sync_provider(
         "added": added,
         "removed": removed,
         "total": len(upstream_set),
-        "removed_ids": to_remove,
+        "added_ids": added_ids,
+        "removed_ids": removed_ids,
     }
 
 
@@ -228,7 +276,7 @@ def main() -> int:
         if result["added"] > 0 or result["removed"] > 0:
             any_change = True
         if result["removed_ids"]:
-            removed_by_node[p["node_id"]] = result["removed_ids"]
+            removed_by_node[p["node_id"]] = set(result["removed_ids"])
 
     if any_change:
         backup()
