@@ -289,6 +289,62 @@ def prune_stale_combo_models(
             log(f"  combo '{r['name']}': pruned {removed_in_combo}")
 
 
+def prune_deleted_provider_models(db: sqlite3.Connection) -> int:
+    """Remove combo refs whose provider prefix is unknown everywhere.
+
+    A prefix is "known" if it appears as:
+      - a node prefix / provider slug in providerNodes / providerConnections, or
+      - the first segment of ANY kv customModels key (covers aliases like oc, bzl).
+
+    Only refs whose prefix matches NONE of those are true orphans of a deleted
+    provider (e.g. `agentic/...` after the provider node was removed in the UI).
+    Returns count of pruned references.
+    """
+    known = set()
+
+    for r in db.execute("SELECT data, name FROM providerNodes"):
+        try:
+            d = json.loads(r["data"]) if r["data"] else {}
+        except (ValueError, TypeError):
+            d = {}
+        known.add(d.get("prefix") or r["name"])
+    for r in db.execute("SELECT provider, name FROM providerConnections"):
+        known.add(r["provider"])
+        known.add(r["name"])
+    for r in db.execute("SELECT key FROM kv WHERE scope='customModels'"):
+        first = r["key"].split("|", 1)[0]
+        if first:
+            known.add(first)
+
+    if not known:
+        return 0
+
+    db.row_factory = sqlite3.Row
+    pruned_total = 0
+    for r in db.execute("SELECT id, name, models FROM combos WHERE models IS NOT NULL"):
+        try:
+            models = json.loads(r["models"]) if r["models"] else []
+        except (ValueError, TypeError):
+            continue
+        new_models = []
+        removed_in_combo = []
+        for m in models:
+            if isinstance(m, str) and "/" in m:
+                pref, _mid = m.split("/", 1)
+                if pref and pref not in known:
+                    removed_in_combo.append(m)
+                    pruned_total += 1
+                    continue
+            new_models.append(m)
+        if removed_in_combo:
+            db.execute(
+                "UPDATE combos SET models=?, updatedAt=datetime('now') WHERE id=?",
+                (json.dumps(new_models), r["id"]),
+            )
+            log(f"  combo '{r['name']}': pruned deleted-provider refs {removed_in_combo}")
+    return pruned_total
+
+
 def main() -> int:
     db = sqlite3.connect(DB)
     db.row_factory = sqlite3.Row
@@ -320,12 +376,13 @@ def main() -> int:
         backup()
         prune_stale_combo_models(db, providers, removed_by_node)
         reconcile_combo_orphans(db, providers)
+        prune_deleted_provider_models(db)
         db.commit()
         log("committed")
     else:
         # If nothing changed at provider level, still reconcile any combo orphans
         # that may have been left by a previous interrupted cycle.
-        if reconcile_combo_orphans(db, providers) > 0:
+        if reconcile_combo_orphans(db, providers) > 0 or prune_deleted_provider_models(db) > 0:
             db.commit()
             log("reconciled combo orphans (no provider change)")
         # clean up stale 0-byte backup file from a previous run
