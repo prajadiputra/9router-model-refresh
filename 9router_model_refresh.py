@@ -239,6 +239,8 @@ def reconcile_combo_orphans(db: sqlite3.Connection, providers: list[dict]) -> in
     pruned_total = 0
     for r in db.execute("SELECT id, name, models FROM combos WHERE models IS NOT NULL"):
         models = json.loads(r["models"]) if r["models"] else []
+        if not isinstance(models, list):
+            continue
         new_models = []
         removed_in_combo = []
         for m in models:
@@ -272,6 +274,8 @@ def prune_stale_combo_models(
     db.row_factory = sqlite3.Row
     for r in db.execute("SELECT id, name, models FROM combos WHERE models IS NOT NULL"):
         models = json.loads(r["models"]) if r["models"] else []
+        if not isinstance(models, list):
+            continue
         new_models = []
         removed_in_combo = []
         for m in models:
@@ -325,6 +329,8 @@ def prune_deleted_provider_models(db: sqlite3.Connection) -> int:
         try:
             models = json.loads(r["models"]) if r["models"] else []
         except (ValueError, TypeError):
+            continue
+        if not isinstance(models, list):
             continue
         new_models = []
         removed_in_combo = []
