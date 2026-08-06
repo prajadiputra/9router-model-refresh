@@ -294,18 +294,25 @@ def prune_stale_combo_models(
 
 
 def prune_deleted_provider_models(db: sqlite3.Connection) -> int:
-    """Remove combo refs whose provider prefix is unknown everywhere.
+    """Symmetric cleanup for providers that no longer exist in 9Router.
 
-    A prefix is "known" if it appears as:
-      - a node prefix / provider slug in providerNodes / providerConnections, or
-      - the first segment of ANY kv customModels key (covers aliases like oc, bzl).
+    A provider is "gone" when its node prefix / connection slug / kv prefix
+    appears in NO active providerNodes/providerConnections and is NOT a known
+    alias (oc/bzl etc. still reachable via kv of a live connection).
 
-    Only refs whose prefix matches NONE of those are true orphans of a deleted
-    provider (e.g. `agentic/...` after the provider node was removed in the UI).
-    Returns count of pruned references.
+    For every gone provider we mirror what sync_provider does on model REMOVE:
+      - DELETE its rows from kv (scope customModels)
+      - emit model_remove events (same shape as sync_provider)
+      - prune its refs from every combo.models
+    This makes deleted-provider cleanup behave IDENTICALLY to a provider-side
+    model removal — just ordered after live-provider sync.
+
+    Returns count of (kv row + combo ref) removals.
     """
+    # Active provider identities: node prefix + name, connection slug + name.
+    # Deliberately NOT derived from kv — kv rows of a deleted provider would
+    # otherwise make that provider look "known" and never get cleaned up.
     known = set()
-
     for r in db.execute("SELECT data, name FROM providerNodes"):
         try:
             d = json.loads(r["data"]) if r["data"] else {}
@@ -315,16 +322,46 @@ def prune_deleted_provider_models(db: sqlite3.Connection) -> int:
     for r in db.execute("SELECT provider, name FROM providerConnections"):
         known.add(r["provider"])
         known.add(r["name"])
-    for r in db.execute("SELECT key FROM kv WHERE scope='customModels'"):
-        first = r["key"].split("|", 1)[0]
-        if first:
-            known.add(first)
+    # Legacy aliases that are NOT openai-compatible nodes but are still wired
+    # into combos (e.g. oc -> openrouter, bzl -> bazaarlink). They have no kv
+    # row of their own naming the provider, so we preserve them explicitly.
+    known.update(("oc", "bzl", "openrouter", "open-00", "open-01", "open-02",
+                  "kimchi", "kiro", "ollama", "kilo", "kilo-gateway", "bazaarlink"))
 
     if not known:
         return 0
 
     db.row_factory = sqlite3.Row
-    pruned_total = 0
+    total = 0
+
+    # 1) kv customModels rows whose provider identity is entirely gone
+    gone_providers = {}
+    for r in db.execute("SELECT key FROM kv WHERE scope='customModels'"):
+        key = r["key"]
+        pref, _, model = key.partition("|")
+        if not pref:
+            continue
+        # identity: prefer node id (uuid) — but aliases (oc/bzl) map by live prefix
+        if pref in known:
+            continue
+        gone_providers.setdefault(pref, []).append(model)
+    for pref, models in gone_providers.items():
+        for mid in models:
+            db.execute(
+                "DELETE FROM kv WHERE scope='customModels' AND key=?",
+                (f"{pref}|{mid}|llm",),
+            )
+            emit_event({
+                "type": "model_remove",
+                "provider": pref,
+                "prefix": pref,
+                "model": mid,
+            })
+            total += 1
+        if models:
+            log(f"  {pref}: deleted-provider kv REMOVE {len(models)} models {models[:5]}")
+
+    # 2) combo refs whose provider prefix is gone
     for r in db.execute("SELECT id, name, models FROM combos WHERE models IS NOT NULL"):
         try:
             models = json.loads(r["models"]) if r["models"] else []
@@ -339,7 +376,7 @@ def prune_deleted_provider_models(db: sqlite3.Connection) -> int:
                 pref, _mid = m.split("/", 1)
                 if pref and pref not in known:
                     removed_in_combo.append(m)
-                    pruned_total += 1
+                    total += 1
                     continue
             new_models.append(m)
         if removed_in_combo:
@@ -348,7 +385,7 @@ def prune_deleted_provider_models(db: sqlite3.Connection) -> int:
                 (json.dumps(new_models), r["id"]),
             )
             log(f"  combo '{r['name']}': pruned deleted-provider refs {removed_in_combo}")
-    return pruned_total
+    return total
 
 
 def main() -> int:
