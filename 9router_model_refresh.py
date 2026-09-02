@@ -338,7 +338,11 @@ def prune_deleted_provider_models(db: sqlite3.Connection) -> int:
     gone_providers = {}
     for r in db.execute("SELECT key FROM kv WHERE scope='customModels'"):
         key = r["key"]
-        pref, _, model = key.partition("|")
+        # Key format: "<nodeId>|<modelId>|llm" — split into 3 parts
+        parts = key.split("|", 2)
+        if len(parts) < 3:
+            continue
+        pref, model, label = parts
         if not pref:
             continue
         # identity: prefer node id (uuid) — but aliases (oc/bzl) map by live prefix
@@ -348,8 +352,8 @@ def prune_deleted_provider_models(db: sqlite3.Connection) -> int:
     for pref, models in gone_providers.items():
         for mid in models:
             db.execute(
-                "DELETE FROM kv WHERE scope='customModels' AND key=?",
-                (f"{pref}|{mid}|llm",),
+                "DELETE FROM kv WHERE scope='customModels' AND key LIKE ?",
+                (f"{pref}|{mid}|%",),
             )
             emit_event({
                 "type": "model_remove",
