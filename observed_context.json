@@ -1,287 +1,382 @@
 {
   "Qwen/Qwen3.7-Flash": {
-    "max_tokens": 494744
+    "max_tokens": 494744,
+    "requests": 115
   },
   "auto:free": {
-    "max_tokens": 783
+    "max_tokens": 783,
+    "requests": 1
   },
   "bansos/deepseek-v4-flash": {
-    "max_tokens": 2782
+    "max_tokens": 2782,
+    "requests": 1
   },
   "bansos/deepseek-v4-flash-0731": {
-    "max_tokens": 63869
+    "max_tokens": 63869,
+    "requests": 10
   },
   "bansos/deepseek-v4-pro": {
-    "max_tokens": 47990
+    "max_tokens": 47990,
+    "requests": 1
   },
   "bansos/glm-5.2": {
-    "max_tokens": 61575
+    "max_tokens": 61575,
+    "requests": 13
   },
   "bansos/kimi-k3": {
-    "max_tokens": 56507
+    "max_tokens": 56507,
+    "requests": 15
   },
   "bt/deepseek-deepseek-v4-flash-vision-exp": {
-    "max_tokens": 187333
+    "max_tokens": 187333,
+    "requests": 2
   },
   "bt/deepseek-pro": {
-    "max_tokens": 414087
+    "max_tokens": 414087,
+    "requests": 146
   },
   "bt/glm-5.3-flash": {
-    "max_tokens": 33329
+    "max_tokens": 33329,
+    "requests": 5
   },
   "bt/grok-4.5": {
-    "max_tokens": 89645
+    "max_tokens": 89645,
+    "requests": 119
   },
   "bt/minimax-m2.5-free": {
-    "max_tokens": 6645
+    "max_tokens": 6645,
+    "requests": 1
   },
   "bt/moonshotai-kimi-k3": {
-    "max_tokens": 190807
+    "max_tokens": 190807,
+    "requests": 15
   },
   "bt/opus-4.8": {
-    "max_tokens": 430842
+    "max_tokens": 430842,
+    "requests": 451
   },
   "bt/router9-openrouter-stealth-ox-alpha": {
-    "max_tokens": 2866
+    "max_tokens": 2866,
+    "requests": 1
   },
   "bt/sonnet5": {
-    "max_tokens": 271464
+    "max_tokens": 271464,
+    "requests": 15
   },
   "bt/z-ai-glm-5.3-flash": {
-    "max_tokens": 70137
+    "max_tokens": 70137,
+    "requests": 11
   },
   "bt/z-ai-glm-5v-turbo": {
-    "max_tokens": 35096
+    "max_tokens": 35096,
+    "requests": 1
   },
   "claude-fable-5": {
-    "max_tokens": 413948
+    "max_tokens": 413948,
+    "requests": 10
   },
   "claude-haiku-4-5": {
-    "max_tokens": 154
+    "max_tokens": 154,
+    "requests": 2
   },
   "claude-haiku-4.5": {
-    "max_tokens": 4953
+    "max_tokens": 4953,
+    "requests": 4
   },
   "claude-opus-4-6": {
-    "max_tokens": 2411
+    "max_tokens": 2411,
+    "requests": 3
   },
   "claude-opus-4-7": {
-    "max_tokens": 21
+    "max_tokens": 21,
+    "requests": 1
   },
   "claude-opus-4-8": {
-    "max_tokens": 15
+    "max_tokens": 15,
+    "requests": 1
   },
   "claude-opus-4.7": {
-    "max_tokens": 7199
+    "max_tokens": 7199,
+    "requests": 1
   },
   "claude-opus-4.8": {
-    "max_tokens": 498996
+    "max_tokens": 498996,
+    "requests": 48
   },
   "claude-opus-5": {
-    "max_tokens": 606515
+    "max_tokens": 606515,
+    "requests": 15
   },
   "claude-sonnet-4-6": {
-    "max_tokens": 210110
+    "max_tokens": 210110,
+    "requests": 48
   },
   "claude-sonnet-4.5": {
-    "max_tokens": 4949
+    "max_tokens": 4949,
+    "requests": 3
   },
   "claude-sonnet-5": {
-    "max_tokens": 493864
+    "max_tokens": 493864,
+    "requests": 830
   },
   "combo:poor": {
-    "max_tokens": 75
+    "max_tokens": 75,
+    "requests": 2
   },
   "deepseek-3.2": {
-    "max_tokens": 3076
+    "max_tokens": 3076,
+    "requests": 5
   },
   "deepseek-v4-flash": {
-    "max_tokens": 532196
+    "max_tokens": 532196,
+    "requests": 5229
   },
   "deepseek-v4-flash-0731": {
-    "max_tokens": 533033
+    "max_tokens": 533033,
+    "requests": 6365
   },
   "deepseek-v4-flash-2": {
-    "max_tokens": 503388
+    "max_tokens": 503388,
+    "requests": 1463
   },
   "deepseek-v4-flash-free": {
-    "max_tokens": 486916
+    "max_tokens": 486916,
+    "requests": 825
   },
   "deepseek-v4-flash:free": {
-    "max_tokens": 526579
+    "max_tokens": 526579,
+    "requests": 1777
   },
   "deepseek-v4-pro": {
-    "max_tokens": 460131
+    "max_tokens": 460131,
+    "requests": 1179
   },
   "deepseek/deepseek-v4-flash": {
-    "max_tokens": 528941
+    "max_tokens": 528941,
+    "requests": 6920
   },
   "deepseek/deepseek-v4-flash-vision-exp": {
-    "max_tokens": 491776
+    "max_tokens": 491776,
+    "requests": 396
   },
   "gemini-2.5-flash": {
-    "max_tokens": 885
+    "max_tokens": 885,
+    "requests": 8
   },
   "gemini-3.1-pro": {
-    "max_tokens": 378111
+    "max_tokens": 378111,
+    "requests": 132
   },
   "gemini-3.5-flash": {
-    "max_tokens": 216873
+    "max_tokens": 216873,
+    "requests": 72
   },
   "gemini-3.6-flash": {
-    "max_tokens": 489817
+    "max_tokens": 489817,
+    "requests": 1017
   },
   "gemini-3.7-flash": {
-    "max_tokens": 761
+    "max_tokens": 761,
+    "requests": 1
   },
   "gemini-pro-agent": {
-    "max_tokens": 377095
+    "max_tokens": 377095,
+    "requests": 97
   },
   "glm-5": {
-    "max_tokens": 3840
+    "max_tokens": 3840,
+    "requests": 3
   },
   "glm-5-2": {
-    "max_tokens": 327654
+    "max_tokens": 327654,
+    "requests": 128
   },
   "glm-5.2": {
-    "max_tokens": 443437
+    "max_tokens": 443437,
+    "requests": 2035
   },
   "glm-5.2-fast": {
-    "max_tokens": 2867
+    "max_tokens": 2867,
+    "requests": 1
   },
   "glm-5.2-free": {
-    "max_tokens": 3004
+    "max_tokens": 3004,
+    "requests": 1
   },
   "glm-5.3-flash": {
-    "max_tokens": 118490
+    "max_tokens": 118490,
+    "requests": 19
   },
   "google/gemini-2.5-flash-lite": {
-    "max_tokens": 933
+    "max_tokens": 933,
+    "requests": 2
   },
   "google/gemini-3.1-flash-lite-preview": {
-    "max_tokens": 922
+    "max_tokens": 922,
+    "requests": 1
   },
   "gpt-5-6-luna": {
-    "max_tokens": 368230
+    "max_tokens": 368230,
+    "requests": 212
   },
   "gpt-5.6-luna": {
-    "max_tokens": 482378
+    "max_tokens": 482378,
+    "requests": 515
   },
   "gpt-5.6-sol": {
-    "max_tokens": 115760
+    "max_tokens": 115760,
+    "requests": 80
   },
   "grok-4.5": {
-    "max_tokens": 379421
+    "max_tokens": 379421,
+    "requests": 76
   },
   "hy3-free": {
-    "max_tokens": 1149
+    "max_tokens": 1149,
+    "requests": 3
   },
   "kenari-free": {
-    "max_tokens": 161634
+    "max_tokens": 161634,
+    "requests": 120
   },
   "kilo-auto/free": {
-    "max_tokens": 121687
+    "max_tokens": 121687,
+    "requests": 24
   },
   "kimi-k3": {
-    "max_tokens": 295328
+    "max_tokens": 295328,
+    "requests": 86
   },
   "kimi-k3-free": {
-    "max_tokens": 4810
+    "max_tokens": 4810,
+    "requests": 9
   },
   "laguna-s-2.1-free": {
-    "max_tokens": 779
+    "max_tokens": 779,
+    "requests": 2
   },
   "laude-sonnet-5": {
-    "max_tokens": 15
+    "max_tokens": 15,
+    "requests": 1
   },
   "limit": {
-    "max_tokens": 330698
+    "max_tokens": 330698,
+    "requests": 645
   },
   "meridian/claude-sonnet-5": {
-    "max_tokens": 15
+    "max_tokens": 15,
+    "requests": 1
   },
   "meta/muse-spark-1.2-contributor": {
-    "max_tokens": 463908
+    "max_tokens": 463908,
+    "requests": 339
   },
   "mimo-v2-5:free": {
-    "max_tokens": 133783
+    "max_tokens": 133783,
+    "requests": 54
   },
   "mimo-v2.5-free": {
-    "max_tokens": 480363
+    "max_tokens": 480363,
+    "requests": 620
   },
   "mimo-v2.5-pro": {
-    "max_tokens": 384359
+    "max_tokens": 384359,
+    "requests": 504
   },
   "mimo/mimo-v2.5": {
-    "max_tokens": 937
+    "max_tokens": 937,
+    "requests": 1
   },
   "minimax-m3": {
-    "max_tokens": 443802
+    "max_tokens": 443802,
+    "requests": 932
   },
   "minimaxai/minimax-m3": {
-    "max_tokens": 97968
+    "max_tokens": 97968,
+    "requests": 28
   },
   "nemotron-3-ultra": {
-    "max_tokens": 109456
+    "max_tokens": 109456,
+    "requests": 51
   },
   "nemotron-3-ultra-fp4": {
-    "max_tokens": 109635
+    "max_tokens": 109635,
+    "requests": 16
   },
   "nemotron-3-ultra-free": {
-    "max_tokens": 814
+    "max_tokens": 814,
+    "requests": 2
   },
   "nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free": {
-    "max_tokens": 2888
+    "max_tokens": 2888,
+    "requests": 1
   },
   "nvidia/nemotron-3-super-120b-a12b:free": {
-    "max_tokens": 1085
+    "max_tokens": 1085,
+    "requests": 2
   },
   "nvidia/nemotron-3-ultra-550b-a55b": {
-    "max_tokens": 853
+    "max_tokens": 853,
+    "requests": 2
   },
   "nvidia/nemotron-3-ultra-550b-a55b:free": {
-    "max_tokens": 356497
+    "max_tokens": 356497,
+    "requests": 118
   },
   "openai/text-embedding-3-large": {
-    "max_tokens": 9
+    "max_tokens": 9,
+    "requests": 1
   },
   "openrouter/free": {
-    "max_tokens": 1160
+    "max_tokens": 1160,
+    "requests": 2
   },
   "poolside/laguna-m.1:free": {
-    "max_tokens": 776
+    "max_tokens": 776,
+    "requests": 1
   },
   "qwen-3.7-max": {
-    "max_tokens": 335068
+    "max_tokens": 335068,
+    "requests": 52
   },
   "qwen-3.8-max-preview": {
-    "max_tokens": 176313
+    "max_tokens": 176313,
+    "requests": 173
   },
   "qwen3-coder-next": {
-    "max_tokens": 14643
+    "max_tokens": 14643,
+    "requests": 3
   },
   "qwen3.7-plus": {
-    "max_tokens": 300961
+    "max_tokens": 300961,
+    "requests": 88
   },
   "stealth/ox-alpha": {
-    "max_tokens": 454013
+    "max_tokens": 454013,
+    "requests": 161
   },
   "tencent/hy3": {
-    "max_tokens": 1274
+    "max_tokens": 1274,
+    "requests": 2
   },
   "x-preview-f-free": {
-    "max_tokens": 425642
+    "max_tokens": 425642,
+    "requests": 189
   },
   "z-ai/glm-5.2": {
-    "max_tokens": 96926
+    "max_tokens": 96926,
+    "requests": 25
   },
   "z-ai/glm-5.2:free": {
-    "max_tokens": 215585
+    "max_tokens": 215585,
+    "requests": 31
   },
   "z-ai/glm-5.3-flash": {
-    "max_tokens": 335832
+    "max_tokens": 335832,
+    "requests": 2
   },
   "zai-org/GLM-5.2": {
-    "max_tokens": 390492
+    "max_tokens": 390492,
+    "requests": 6
   }
 }

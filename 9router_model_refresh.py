@@ -1085,12 +1085,16 @@ def should_add_model(prefix: str, model_id: str) -> bool:
 
     Unknown models (no context info) are ALLOWED (fallback) so the sync never
     silently drops a brand-new model we haven't yet catalogued. Actually-known
-    sub-1M models are filtered out.
+    sub-1M models are filtered out. Plateau heuristic: unknown models with many
+    real requests that never approach 1M are also filtered out.
     """
     ctx = _context_of(prefix, model_id)
-    if ctx is None:
-        return True
-    return ctx >= 1000000
+    if ctx is not None:
+        return ctx >= 1000000
+    # unknown — check observed usage plateau before allowing
+    if _plateau_sub_1m(prefix, model_id):
+        return False
+    return True
 
 
 # Update sync_provider to apply the ≥1M context filter at line 173
@@ -1128,15 +1132,24 @@ def update_observed_context(db: sqlite3.Connection) -> dict:
     """Scan usageHistory, update max total tokens per model. Returns delta count."""
     data = load_observed_context()
     changed = 0
+    req_counts = {}
     for r in db.execute(
         "SELECT model, promptTokens, completionTokens FROM usageHistory"
     ):
         m = str(r["model"])
         t = (r["promptTokens"] or 0) + (r["completionTokens"] or 0)
+        req_counts[m] = req_counts.get(m, 0) + 1
         if t <= 0:
             continue
-        if t > data.get(m, {}).get("max_tokens", 0):
+        prev = data.get(m, {})
+        if t > prev.get("max_tokens", 0):
             data[m] = {"max_tokens": t}
+            changed += 1
+    # persist request counts (cheap, used for plateau confidence)
+    for m, c in req_counts.items():
+        entry = data.setdefault(m, {})
+        if c > entry.get("requests", 0):
+            entry["requests"] = c
             changed += 1
     if changed:
         save_observed_context(data)
@@ -1155,6 +1168,38 @@ def observed_context_of(prefix: str, model_id: str) -> int | None:
         if v:
             return v.get("max_tokens")
     return None
+
+
+# Plateau threshold: any model that has >= this many observed requests AND whose
+# max observed total tokens stays under PLATEAU_MIN_TOKENS is treated as sub-1M.
+PLATEAU_MIN_REQUESTS = 30
+PLATEAU_MIN_TOKENS = 800000
+
+
+def _plateau_sub_1m(prefix: str, model_id: str) -> bool:
+    """Heuristic: many requests, real usage never approaches 1M → treat as sub-1M."""
+    entry = None
+    bare = _bare_name(model_id)
+    try:
+        data = load_observed_context()
+    except Exception:
+        return False
+    for cand in (model_id, f"{prefix}/{model_id}", bare):
+        if cand in data:
+            entry = data[cand]
+            break
+    if not entry:
+        return False
+    reqs = entry.get("requests", 0)
+    mx = entry.get("max_tokens", 0)
+    # - confident plateau: many requests and peak well under the 1M floor
+    if reqs >= PLATEAU_MIN_REQUESTS and mx < PLATEAU_MIN_TOKENS:
+        return True
+    # - hard evidence it can't reach 1M (nobody sends over the model's own hard cap,
+    #   and we've observed a bunch of requests topping out far below)
+    if reqs >= 5 and 0 < mx <= 200000:
+        return True
+    return False
 
 
 def sync_provider(
