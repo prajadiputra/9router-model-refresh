@@ -1020,6 +1020,16 @@ CONTEXT_OVERRIDE_BY_PREFIX = {
     'bt': {'grok-4.5': 500000, 'grok-4.6': 500000, 'auto': None},
     'code': {'grok-4.5': 500000, 'grok-4.6': 500000},
     'limit': {'grok-4.5': 1000000, 'grok-4.6': 1000000},
+    # kelontong — user-verified from kelontongai.my.id/user/models (Aug 2026):
+    # kolom "Output" = max output, context window SEMUA = 1M. Setiap model ini di-set 1M.
+    'lontong': {
+        'kimi-k3': 1000000, 'gpt-5.6-sol': 1000000, 'gemini-3.6-flash': 1000000,
+        'glm-5.3': 1000000, 'gpt-5.6-terra': 1000000, 'gemini-3.7-flash': 1000000,
+        'deepseek-v4-flash-0731': 1000000, 'glm-5.3-flash': 1000000,
+        'claude-opus-5': 1000000, 'gemini-3.1-pro': 1000000, 'muse-spark-1.2': 1000000,
+        'claude-sonnet-5': 1000000, 'claude-opus-4.8': 1000000, 'mimo-v2.5': 1000000,
+        'deepseek-v4-flash-vision-exp': 1000000, 'hy4': 1000000,  # thy4 di API = hy4 di kv
+    },
 }
 
 # Vendor prefixes to strip when looking up a model by its bare name.
