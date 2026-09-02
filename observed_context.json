@@ -1,0 +1,287 @@
+{
+  "Qwen/Qwen3.7-Flash": {
+    "max_tokens": 494744
+  },
+  "auto:free": {
+    "max_tokens": 783
+  },
+  "bansos/deepseek-v4-flash": {
+    "max_tokens": 2782
+  },
+  "bansos/deepseek-v4-flash-0731": {
+    "max_tokens": 63869
+  },
+  "bansos/deepseek-v4-pro": {
+    "max_tokens": 47990
+  },
+  "bansos/glm-5.2": {
+    "max_tokens": 61575
+  },
+  "bansos/kimi-k3": {
+    "max_tokens": 56507
+  },
+  "bt/deepseek-deepseek-v4-flash-vision-exp": {
+    "max_tokens": 187333
+  },
+  "bt/deepseek-pro": {
+    "max_tokens": 414087
+  },
+  "bt/glm-5.3-flash": {
+    "max_tokens": 33329
+  },
+  "bt/grok-4.5": {
+    "max_tokens": 89645
+  },
+  "bt/minimax-m2.5-free": {
+    "max_tokens": 6645
+  },
+  "bt/moonshotai-kimi-k3": {
+    "max_tokens": 190807
+  },
+  "bt/opus-4.8": {
+    "max_tokens": 430842
+  },
+  "bt/router9-openrouter-stealth-ox-alpha": {
+    "max_tokens": 2866
+  },
+  "bt/sonnet5": {
+    "max_tokens": 271464
+  },
+  "bt/z-ai-glm-5.3-flash": {
+    "max_tokens": 70137
+  },
+  "bt/z-ai-glm-5v-turbo": {
+    "max_tokens": 35096
+  },
+  "claude-fable-5": {
+    "max_tokens": 413948
+  },
+  "claude-haiku-4-5": {
+    "max_tokens": 154
+  },
+  "claude-haiku-4.5": {
+    "max_tokens": 4953
+  },
+  "claude-opus-4-6": {
+    "max_tokens": 2411
+  },
+  "claude-opus-4-7": {
+    "max_tokens": 21
+  },
+  "claude-opus-4-8": {
+    "max_tokens": 15
+  },
+  "claude-opus-4.7": {
+    "max_tokens": 7199
+  },
+  "claude-opus-4.8": {
+    "max_tokens": 498996
+  },
+  "claude-opus-5": {
+    "max_tokens": 606515
+  },
+  "claude-sonnet-4-6": {
+    "max_tokens": 210110
+  },
+  "claude-sonnet-4.5": {
+    "max_tokens": 4949
+  },
+  "claude-sonnet-5": {
+    "max_tokens": 493864
+  },
+  "combo:poor": {
+    "max_tokens": 75
+  },
+  "deepseek-3.2": {
+    "max_tokens": 3076
+  },
+  "deepseek-v4-flash": {
+    "max_tokens": 532196
+  },
+  "deepseek-v4-flash-0731": {
+    "max_tokens": 533033
+  },
+  "deepseek-v4-flash-2": {
+    "max_tokens": 503388
+  },
+  "deepseek-v4-flash-free": {
+    "max_tokens": 486916
+  },
+  "deepseek-v4-flash:free": {
+    "max_tokens": 526579
+  },
+  "deepseek-v4-pro": {
+    "max_tokens": 460131
+  },
+  "deepseek/deepseek-v4-flash": {
+    "max_tokens": 528941
+  },
+  "deepseek/deepseek-v4-flash-vision-exp": {
+    "max_tokens": 491776
+  },
+  "gemini-2.5-flash": {
+    "max_tokens": 885
+  },
+  "gemini-3.1-pro": {
+    "max_tokens": 378111
+  },
+  "gemini-3.5-flash": {
+    "max_tokens": 216873
+  },
+  "gemini-3.6-flash": {
+    "max_tokens": 489817
+  },
+  "gemini-3.7-flash": {
+    "max_tokens": 761
+  },
+  "gemini-pro-agent": {
+    "max_tokens": 377095
+  },
+  "glm-5": {
+    "max_tokens": 3840
+  },
+  "glm-5-2": {
+    "max_tokens": 327654
+  },
+  "glm-5.2": {
+    "max_tokens": 443437
+  },
+  "glm-5.2-fast": {
+    "max_tokens": 2867
+  },
+  "glm-5.2-free": {
+    "max_tokens": 3004
+  },
+  "glm-5.3-flash": {
+    "max_tokens": 118490
+  },
+  "google/gemini-2.5-flash-lite": {
+    "max_tokens": 933
+  },
+  "google/gemini-3.1-flash-lite-preview": {
+    "max_tokens": 922
+  },
+  "gpt-5-6-luna": {
+    "max_tokens": 368230
+  },
+  "gpt-5.6-luna": {
+    "max_tokens": 482378
+  },
+  "gpt-5.6-sol": {
+    "max_tokens": 115760
+  },
+  "grok-4.5": {
+    "max_tokens": 379421
+  },
+  "hy3-free": {
+    "max_tokens": 1149
+  },
+  "kenari-free": {
+    "max_tokens": 161634
+  },
+  "kilo-auto/free": {
+    "max_tokens": 121687
+  },
+  "kimi-k3": {
+    "max_tokens": 295328
+  },
+  "kimi-k3-free": {
+    "max_tokens": 4810
+  },
+  "laguna-s-2.1-free": {
+    "max_tokens": 779
+  },
+  "laude-sonnet-5": {
+    "max_tokens": 15
+  },
+  "limit": {
+    "max_tokens": 330698
+  },
+  "meridian/claude-sonnet-5": {
+    "max_tokens": 15
+  },
+  "meta/muse-spark-1.2-contributor": {
+    "max_tokens": 463908
+  },
+  "mimo-v2-5:free": {
+    "max_tokens": 133783
+  },
+  "mimo-v2.5-free": {
+    "max_tokens": 480363
+  },
+  "mimo-v2.5-pro": {
+    "max_tokens": 384359
+  },
+  "mimo/mimo-v2.5": {
+    "max_tokens": 937
+  },
+  "minimax-m3": {
+    "max_tokens": 443802
+  },
+  "minimaxai/minimax-m3": {
+    "max_tokens": 97968
+  },
+  "nemotron-3-ultra": {
+    "max_tokens": 109456
+  },
+  "nemotron-3-ultra-fp4": {
+    "max_tokens": 109635
+  },
+  "nemotron-3-ultra-free": {
+    "max_tokens": 814
+  },
+  "nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free": {
+    "max_tokens": 2888
+  },
+  "nvidia/nemotron-3-super-120b-a12b:free": {
+    "max_tokens": 1085
+  },
+  "nvidia/nemotron-3-ultra-550b-a55b": {
+    "max_tokens": 853
+  },
+  "nvidia/nemotron-3-ultra-550b-a55b:free": {
+    "max_tokens": 356497
+  },
+  "openai/text-embedding-3-large": {
+    "max_tokens": 9
+  },
+  "openrouter/free": {
+    "max_tokens": 1160
+  },
+  "poolside/laguna-m.1:free": {
+    "max_tokens": 776
+  },
+  "qwen-3.7-max": {
+    "max_tokens": 335068
+  },
+  "qwen-3.8-max-preview": {
+    "max_tokens": 176313
+  },
+  "qwen3-coder-next": {
+    "max_tokens": 14643
+  },
+  "qwen3.7-plus": {
+    "max_tokens": 300961
+  },
+  "stealth/ox-alpha": {
+    "max_tokens": 454013
+  },
+  "tencent/hy3": {
+    "max_tokens": 1274
+  },
+  "x-preview-f-free": {
+    "max_tokens": 425642
+  },
+  "z-ai/glm-5.2": {
+    "max_tokens": 96926
+  },
+  "z-ai/glm-5.2:free": {
+    "max_tokens": 215585
+  },
+  "z-ai/glm-5.3-flash": {
+    "max_tokens": 335832
+  },
+  "zai-org/GLM-5.2": {
+    "max_tokens": 390492
+  }
+}

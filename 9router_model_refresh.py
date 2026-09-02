@@ -1094,6 +1094,69 @@ def should_add_model(prefix: str, model_id: str) -> bool:
 
 
 # Update sync_provider to apply the ≥1M context filter at line 173
+
+# ── observed context tracker ─────────────────────────────────────────────────
+# Persist the max total tokens observed per model in real usage, so a model whose
+# context we couldn't look up today can still be FILTERED later as soon as real
+# usage proves it can't reach 1M (i.e. its observed max plateaus well below 1M),
+# or credited as ≥1M the day a request actually uses that much.
+# File: <script_dir>/observed_context.json — create it manually if you want to
+# seed known models.
+OBSERVED_CONTEXT_FILE = os.path.join(
+    os.path.dirname(os.path.abspath(__file__)), "observed_context.json"
+)
+
+
+def load_observed_context() -> dict:
+    if not os.path.exists(OBSERVED_CONTEXT_FILE):
+        return {}
+    try:
+        with open(OBSERVED_CONTEXT_FILE) as f:
+            return json.load(f)
+    except (ValueError, OSError):
+        return {}
+
+
+def save_observed_context(data: dict) -> None:
+    tmp = OBSERVED_CONTEXT_FILE + ".tmp"
+    with open(tmp, "w") as f:
+        json.dump(data, f, indent=2, sort_keys=True)
+    os.replace(tmp, OBSERVED_CONTEXT_FILE)
+
+
+def update_observed_context(db: sqlite3.Connection) -> dict:
+    """Scan usageHistory, update max total tokens per model. Returns delta count."""
+    data = load_observed_context()
+    changed = 0
+    for r in db.execute(
+        "SELECT model, promptTokens, completionTokens FROM usageHistory"
+    ):
+        m = str(r["model"])
+        t = (r["promptTokens"] or 0) + (r["completionTokens"] or 0)
+        if t <= 0:
+            continue
+        if t > data.get(m, {}).get("max_tokens", 0):
+            data[m] = {"max_tokens": t}
+            changed += 1
+    if changed:
+        save_observed_context(data)
+    return changed
+
+
+def observed_context_of(prefix: str, model_id: str) -> int | None:
+    """Max total tokens actually observed for this model (or None)."""
+    try:
+        data = load_observed_context()
+    except Exception:
+        return None
+    bare = _bare_name(model_id)
+    for cand in (model_id, f"{prefix}/{model_id}", bare):
+        v = data.get(cand)
+        if v:
+            return v.get("max_tokens")
+    return None
+
+
 def sync_provider(
     db: sqlite3.Connection, provider: dict, upstream_ids: list[str]
 ) -> dict:
@@ -1385,6 +1448,14 @@ def main() -> int:
         if os.path.exists(BACKUP_FILE) and os.path.getsize(BACKUP_FILE) == 0:
             os.remove(BACKUP_FILE)
         log("no changes, no commit")
+
+    # Track max observed context per model from real usage (sidecar JSON).
+    try:
+        changed = update_observed_context(db)
+        if changed:
+            log(f"observed-context tracker: {changed} new/updated entries")
+    except Exception as e:
+        log(f"observed-context tracker error: {e}")
 
     db.close()
     return 0
