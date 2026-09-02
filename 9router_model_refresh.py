@@ -1449,6 +1449,64 @@ def prune_deleted_provider_models(db: sqlite3.Connection) -> int:
     return total
 
 
+def prune_sub_1m_models(db: sqlite3.Connection, providers: list[dict]) -> int:
+    """Remove cached kv rows whose context is verified <1M (known or plateau).
+    Unknown models are NEVER pruned (no evidence). Returns count removed."""
+    prefix_by_node = {p["node_id"]: p["prefix"] for p in providers}
+    db.row_factory = sqlite3.Row
+    removed_kv = []  # (prefix, model_id, key)
+    for r in db.execute("SELECT key FROM kv WHERE scope='customModels'"):
+        key = r["key"]
+        parts = key.split("|", 2)
+        if len(parts) < 3:
+            continue
+        pref, mid, _label = parts
+        prefix = prefix_by_node.get(pref, pref)
+        if not should_add_model(prefix, mid):
+            removed_kv.append((pref, prefix, mid, key))
+    for pref, prefix, mid, key in removed_kv:
+        db.execute("DELETE FROM kv WHERE scope='customModels' AND key=?", (key,))
+        emit_event({
+            "type": "model_remove",
+            "provider": prefix,
+            "prefix": prefix,
+            "model": mid,
+        })
+    if removed_kv:
+        log(f"  sub-1M PRUNE: {len(removed_kv)} models removed "
+            f"{[m for _, _, m, _ in removed_kv[:15]]}{'...' if len(removed_kv) > 15 else ''}")
+
+    # combo refs
+    removed_ids_by_prefix = {}
+    for pref, prefix, mid, _key in removed_kv:
+        removed_ids_by_prefix.setdefault(prefix, set()).add(mid)
+    combo_removed = 0
+    for r in db.execute("SELECT id, name, models FROM combos WHERE models IS NOT NULL"):
+        try:
+            models = json.loads(r["models"]) if r["models"] else []
+        except (ValueError, TypeError):
+            continue
+        if not isinstance(models, list):
+            continue
+        new_models = []
+        removed_in_combo = []
+        for m in models:
+            if isinstance(m, str) and "/" in m:
+                pref, _mid = m.split("/", 1)
+                if pref in removed_ids_by_prefix and _mid in removed_ids_by_prefix[pref]:
+                    removed_in_combo.append(m)
+                    combo_removed += 1
+                    continue
+            new_models.append(m)
+        if removed_in_combo:
+            db.execute(
+                "UPDATE combos SET models=?, updatedAt=datetime('now') WHERE id=?",
+                (json.dumps(new_models), r["id"]),
+            )
+            log(f"  combo '{r['name']}': pruned sub-1M refs {removed_in_combo[:10]}{'...' if len(removed_in_combo) > 10 else ''}")
+    return len(removed_kv) + combo_removed
+
+
 def main() -> int:
     db = sqlite3.connect(DB)
     db.row_factory = sqlite3.Row
@@ -1481,18 +1539,25 @@ def main() -> int:
         prune_stale_combo_models(db, providers, removed_by_node)
         reconcile_combo_orphans(db, providers)
         prune_deleted_provider_models(db)
+        # NEW: also prune sub-1M models (known + plateau)
+        pruned = prune_sub_1m_models(db, providers)
+        if pruned > 0:
+            log(f"  total sub-1M pruning: {pruned} kv+combo removals")
         db.commit()
         log("committed")
     else:
         # If nothing changed at provider level, still reconcile any combo orphans
         # that may have been left by a previous interrupted cycle.
-        if reconcile_combo_orphans(db, providers) > 0 or prune_deleted_provider_models(db) > 0:
+        orphans = reconcile_combo_orphans(db, providers)
+        deleted = prune_deleted_provider_models(db)
+        # Sub-1M pruning runs on EVERY pass (not only on provider change) so the
+        # registry converges to ≥1M-only even when upstream lists are stable.
+        pruned = prune_sub_1m_models(db, providers)
+        if orphans > 0 or deleted > 0 or pruned > 0:
             db.commit()
-            log("reconciled combo orphans (no provider change)")
-        # clean up stale 0-byte backup file from a previous run
-        if os.path.exists(BACKUP_FILE) and os.path.getsize(BACKUP_FILE) == 0:
-            os.remove(BACKUP_FILE)
-        log("no changes, no commit")
+            log(f"reconciled/pruned without provider change (orphans={orphans}, deleted-provider={deleted}, sub-1M={pruned})")
+        else:
+            log("no changes, no commit")
 
     # Track max observed context per model from real usage (sidecar JSON).
     try:
