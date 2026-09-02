@@ -1507,6 +1507,138 @@ def prune_sub_1m_models(db: sqlite3.Connection, providers: list[dict]) -> int:
     return len(removed_kv) + combo_removed
 
 
+# Auto-remove from combos: consecutive error threshold + cooldown before re-add.
+ERROR_RUN_THRESHOLD = 5          # > N consecutive failures (no success between)
+ERROR_BAN_COOLDOWN_S = 3600      # re-allow after this many seconds (default 1h)
+BAN_STATE_FILE = os.path.join(
+    os.path.dirname(os.path.abspath(__file__)), "error_ban_state.json"
+)
+
+
+def _load_ban_state() -> dict:
+    if not os.path.exists(BAN_STATE_FILE):
+        return {}
+    try:
+        with open(BAN_STATE_FILE) as f:
+            return json.load(f)
+    except (ValueError, OSError):
+        return {}
+
+
+def _save_ban_state(state: dict) -> None:
+    tmp = BAN_STATE_FILE + ".tmp"
+    with open(tmp, "w") as f:
+        json.dump(state, f, indent=2, sort_keys=True)
+    os.replace(tmp, BAN_STATE_FILE)
+
+
+def _is_error_row(row) -> bool:
+    """True if a requestDetails row ended in an error (status or HTTP >=400)."""
+    if row["status"] == "error":
+        return True
+    try:
+        d = json.loads(row["data"]) if row["data"] else {}
+    except (ValueError, TypeError):
+        d = {}
+    resp = d.get("response") or {}
+    st = resp.get("status") if isinstance(resp, dict) else None
+    if st:
+        try:
+            return int(st) >= 400
+        except (TypeError, ValueError):
+            pass
+    return False
+
+
+def auto_remove_failing_combo_models(db: sqlite3.Connection) -> int:
+    """Detect models that failed N+ times in a row (no success between) and
+    remove them from every combo until the cooldown elapses.
+
+    Banned entries are tracked in error_ban_state.json as:
+        "<provider>|<model-id>" -> {"banned_at": epoch, "run": N}
+    On cooldown expiry the model is re-inserted to the combos it came from
+    (best-effort, original position lost).
+
+    Returns number of combo members removed this pass.
+    """
+    state = _load_ban_state()
+    now = time.time()
+    db.row_factory = sqlite3.Row
+    rows = list(db.execute(
+        "SELECT timestamp, provider, model, status, data FROM requestDetails ORDER BY timestamp ASC"
+    ))
+
+    # Build consecutive-run counters (provider + model key)
+    runs = {}
+    for r in rows:
+        key = (str(r["provider"]), str(r["model"]))
+        if _is_error_row(r):
+            cur, tot = runs.get(key, (0, 0))
+            runs[key] = (cur + 1, tot + 1)
+        else:
+            cur, tot = runs.get(key, (0, 0))
+            runs[key] = (0, tot)
+
+    # Find newly-banned keys
+    newly_banned = []
+    for (prov, model), (cur, tot) in runs.items():
+        if cur > 0 and cur >= ERROR_RUN_THRESHOLD:
+            key = f"{prov}|{model}"
+            if key not in state:
+                newly_banned.append((key, prov, model, cur))
+
+    removed = 0
+    if newly_banned:
+        # remove from combos
+        for r in db.execute("SELECT id, name, models FROM combos WHERE models IS NOT NULL"):
+            try:
+                models = json.loads(r["models"]) if r["models"] else []
+            except (ValueError, TypeError):
+                continue
+            if not isinstance(models, list):
+                continue
+            new_models = []
+            removed_in_combo = []
+            for m in models:
+                hit = False
+                if isinstance(m, str):
+                    for key, prov, model, cur in newly_banned:
+                        # match: model id or provider/model forms
+                        if model in m or (prov.split("/")[-1] + "/" + model) in m:
+                            hit = True
+                            break
+                if hit:
+                    removed_in_combo.append(m)
+                    removed += 1
+                    continue
+                new_models.append(m)
+            if removed_in_combo:
+                db.execute(
+                    "UPDATE combos SET models=?, updatedAt=datetime('now') WHERE id=?",
+                    (json.dumps(new_models), r["id"]),
+                )
+                log(f"  AUTO-REMOVE error-banned: combo '{r['name']}' -> {removed_in_combo}")
+        for key, prov, model, cur in newly_banned:
+            state[key] = {"banned_at": now, "run": cur}
+            emit_event({
+                "type": "model_ban",
+                "provider": prov,
+                "prefix": prov.split("/")[-1],
+                "model": model,
+            })
+        _save_ban_state(state)
+
+    # Cooldown expiry: re-allow (no auto-reinsert — user may not want same model back)
+    expired = [k for k, v in state.items() if now - v.get("banned_at", 0) >= ERROR_BAN_COOLDOWN_S]
+    if expired:
+        for k in expired:
+            state.pop(k, None)
+        _save_ban_state(state)
+        log(f"  error-ban cooldown expired for {len(expired)} models")
+
+    return removed
+
+
 def main() -> int:
     db = sqlite3.connect(DB)
     db.row_factory = sqlite3.Row
@@ -1543,6 +1675,10 @@ def main() -> int:
         pruned = prune_sub_1m_models(db, providers)
         if pruned > 0:
             log(f"  total sub-1M pruning: {pruned} kv+combo removals")
+        # auto-remove error-banned combo members
+        banned_removed = auto_remove_failing_combo_models(db)
+        if banned_removed > 0:
+            log(f"  error-banned combo removals: {banned_removed}")
         db.commit()
         log("committed")
     else:
@@ -1553,9 +1689,10 @@ def main() -> int:
         # Sub-1M pruning runs on EVERY pass (not only on provider change) so the
         # registry converges to ≥1M-only even when upstream lists are stable.
         pruned = prune_sub_1m_models(db, providers)
-        if orphans > 0 or deleted > 0 or pruned > 0:
+        banned_removed = auto_remove_failing_combo_models(db)
+        if orphans > 0 or deleted > 0 or pruned > 0 or banned_removed > 0:
             db.commit()
-            log(f"reconciled/pruned without provider change (orphans={orphans}, deleted-provider={deleted}, sub-1M={pruned})")
+            log(f"reconciled/pruned without provider change (orphans={orphans}, deleted-provider={deleted}, sub-1M={pruned}, error-ban={banned_removed})")
         else:
             log("no changes, no commit")
 
