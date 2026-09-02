@@ -20,6 +20,7 @@ Usage:
 """
 
 import os
+import re
 import sys
 import json
 import sqlite3
@@ -157,12 +158,68 @@ def get_cached_models(db: sqlite3.Connection, node_id: str) -> set[str]:
     return {r[0].split("|", 2)[1] for r in rows if "|" in r[0]}
 
 
+# Context whitelist per-provider (verified ≥ 1M from official pricing pages)
+# Sources: limitrouter.com/pricing, commandcode.ai/docs/plans/goat, openrouter.ai/api/v1/models
+CONTEXT_WHITELIST_BY_PREFIX = {
+    # limitrouter: https://limitrouter.com/pricing — kolom "Konteks"
+    'limit': [
+        # >=1M verified di LimitRouter
+        ('deepseek-v4-flash', 'deepseek-v4-flash-0731', 'deepseek-v4-pro', 'deepseek-v4-pro-0813',
+         'glm-5.2', 'glm-5.3', 'glm-5.3-flash', 'glm-5.2-fast', 'glm-5.2-prio',
+         'claude-opus-4.7', 'claude-opus-4.8', 'claude-opus-5', 'claude-sonnet-5',
+         'kimi-k3', 'kimi-k3-prio', 'kimi-k3-fast', 'qwen3.8-max', 'gpt-5.4',
+         'minimax-m3', 'grok-4.5', 'grok-4.6', 'gemini-3.5-flash', 'gemini-3.6-flash', 'gemini-3.7-flash',
+         'deepseek-v4-flash-0731-prio'),
+        # <1M (excluded): glm-5 (200K), glm-5.1 (200K), gpt-5.5 (275K), gpt-5.6-luna/sol/terra (271K),
+        # gemini-3.1-pro (300K!), claude-sonnet-4-6 (200K), claude-opus-4-6 (200K), grok-4.20 (300K), qwen3.7-plus (250K)
+    ],
+    # commandcode GOAT plan: https://commandcode.ai/docs/plans/goat — kolom "Context"
+    'code': [
+        # 1M verified
+        ('glm-5.3', 'deepseek-v4-flash', 'deepseek-v4-flash-fast', 'deepseek-v4-flash-vision-exp',
+         'deepseek-v4-pro', 'qwen3.8-max', 'kimi-k3', 'muse-spark-1.2', 'tencent-hy4-preview',
+         'incling-small', 'qwen3.7-flash',  # tencent-hy3 exluded (262K)
+         'gpt-5.6-luna', 'gpt-5.6-sol'),  # Luna/Sol = 1.1M context
+        # <1M excluded: grok-4.5/4.6 (500K), kimi-k2.7-code (256K), laguna-s-2.1 (256K), inkling (256K)
+    ],
+}
+
+def should_add_model(prefix: str, model_id: str) -> bool:
+    """Return True if model passes the ≥1M context filter."""
+    raw = CONTEXT_WHITELIST_BY_PREFIX.get(prefix, [])
+    if not raw:
+        return True  # unknown prefix → allow all (fallback)
+    # whitelist entries may be nested tuples — flatten to a set of names
+    flat: set[str] = set()
+    for entry in raw:
+        if isinstance(entry, (list, tuple)):
+            flat.update(str(x) for x in entry)
+        else:
+            flat.add(str(entry))
+
+    if model_id in flat:
+        return True
+
+    # Normalize lowercase + strip suffixes like -prio, -fast
+    mid = model_id.lower()
+    base = re.match(r'^([a-zA-Z0-9_-]+)', mid).group(1)
+    if base in {x.lower() for x in flat}:
+        return True
+
+    # Not in the ≥1M whitelist for this provider → filtered out
+    return False
+
+
+# Update sync_provider to apply the ≥1M context filter at line 173
 def sync_provider(
     db: sqlite3.Connection, provider: dict, upstream_ids: list[str]
 ) -> dict:
-    """Diff upstream vs cached; add/remove kv rows. Returns stats + removed ids."""
+    """Diff upstream vs cached; add/remove kv rows. Returns stats + removed ids.
+    Applies ≥1M context filter on ADD (should_add_model) — models <1M are skipped.
+    """
     node_id = provider["node_id"]
     name = provider["name"]
+    prefix = provider.get("prefix", "")
     cached = get_cached_models(db, node_id)
     upstream_set = set(upstream_ids)
     to_add = upstream_set - cached
@@ -170,7 +227,13 @@ def sync_provider(
 
     added = 0
     added_ids = []
+    filtered = 0
+    filtered_ids = []
     for mid in to_add:
+        if not should_add_model(prefix, mid):
+            filtered += 1
+            filtered_ids.append(mid)
+            continue
         key = f"{node_id}|{mid}|llm"
         value = json.dumps(
             {"providerAlias": node_id, "id": mid, "type": "llm", "name": mid}
@@ -205,10 +268,12 @@ def sync_provider(
             "model": mid,
         })
 
-    if added or removed:
-        log(f"  {name}: +{added} -{removed} (cached: {len(cached)} → {len(upstream_set)})")
+    if added or removed or filtered:
+        log(f"  {name}: +{added} -{removed} ~{filtered}filtered<1M (cached: {len(cached)} → {len(upstream_set)})")
     else:
         log(f"  {name}: no change ({len(upstream_set)} models)")
+    if filtered:
+        log(f"    filtered (context <1M, skipped): {filtered_ids[:15]}{'...' if len(filtered_ids) > 15 else ''}")
 
     return {
         "name": name,
@@ -217,6 +282,7 @@ def sync_provider(
         "total": len(upstream_set),
         "added_ids": added_ids,
         "removed_ids": removed_ids,
+        "filtered_ids": filtered_ids,
     }
 
 
